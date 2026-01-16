@@ -14,7 +14,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /login", login)
-	mux.HandleFunc("GET /verify", verify)
+	mux.Handle("GET /verify", auth.AuthMiddleware(http.HandlerFunc(verify)))
 
 	srv := http.Server{Addr: "localhost:8091", Handler: mux}
 
@@ -25,7 +25,27 @@ func main() {
 	}
 }
 
-func verify(w http.ResponseWriter, r *http.Request) {}
+func verify(w http.ResponseWriter, r *http.Request) {
+	user, ok := auth.GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	type response struct {
+		Message string `json:"message"`
+	}
+
+	err := json.NewEncoder(w).Encode(
+		response{Message: fmt.Sprintf("Hello, %s!", user.Name)},
+	)
+	if err != nil {
+		return
+	}
+}
 
 func login(w http.ResponseWriter, r *http.Request) {
 	authHeader := r.Header.Get("Authorization")
