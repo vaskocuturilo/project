@@ -2,16 +2,17 @@ package token
 
 import (
 	"project1/auth"
+	"project1/internal/config"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var secret = []byte("b5bfec4b39eb6e579f4c3ba0e4a82f880e0fe0428719c54ad14b386930374789")
-
 const issuer = "example.com"
 
 func CreateAccessToken(u auth.User) (string, error) {
+	secret := config.JWTSecret()
+
 	var claims = jwt.MapClaims{
 		"iss":           issuer,
 		"sub":           u.Name,
