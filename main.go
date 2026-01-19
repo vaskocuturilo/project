@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"project1/auth"
+	"project1/accesstoken"
+	"project1/refreshtoken"
 	"project1/token"
 	"strings"
 )
@@ -14,7 +15,9 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /login", login)
-	mux.Handle("GET /verify", auth.AuthMiddleware(http.HandlerFunc(verify)))
+	mux.Handle("GET /verify", accesstoken.Middleware(http.HandlerFunc(verify)))
+
+	mux.HandleFunc("POST /refresh", refreshtoken.Refresh)
 
 	srv := http.Server{Addr: "localhost:8091", Handler: mux}
 
@@ -26,13 +29,15 @@ func main() {
 }
 
 func verify(w http.ResponseWriter, r *http.Request) {
-	user, ok := auth.GetUserFromContext(r.Context())
+	user, ok := accesstoken.GetUserFromContext(r.Context())
+
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
 	w.WriteHeader(http.StatusOK)
 
 	type response struct {
@@ -72,7 +77,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := auth.AuthUser(creds[0], creds[1])
+	user, err := accesstoken.AuthUser(creds[0], creds[1])
 
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)

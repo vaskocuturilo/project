@@ -1,8 +1,8 @@
 package token
 
 import (
-	"project1/auth"
 	"project1/internal/config"
+	"project1/users"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -10,7 +10,7 @@ import (
 
 const issuer = "example.com"
 
-func CreateAccessToken(u auth.User) (string, error) {
+func CreateAccessToken(u users.User) (string, error) {
 	secret := config.JWTSecret()
 
 	var claims = jwt.MapClaims{
