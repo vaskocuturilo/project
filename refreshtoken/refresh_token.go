@@ -32,28 +32,32 @@ var (
 	refreshTokens = make(map[string]struct{})
 )
 
-func Refresh(writer http.ResponseWriter, request *http.Request) {
-	if err := json.NewDecoder(request.Body).Decode(&request); err != nil || req.RefreshToken == "" {
-		http.Error(writer, "Invalid request body", http.StatusBadRequest)
+func Refresh(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid r method", http.StatusMethodNotAllowed)
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&r); err != nil || req.RefreshToken == "" {
+		http.Error(w, "Invalid r body", http.StatusBadRequest)
 		return
 	}
 
 	refreshToken, err := verifyRefreshToken(req.RefreshToken)
 
 	if err != nil {
-		http.Error(writer, "Bad refresh token", http.StatusBadRequest)
+		http.Error(w, "Bad refresh token", http.StatusBadRequest)
 		return
 	}
 
 	newAccess, err := token.CreateAccessToken(refreshToken)
 	if err != nil {
-		http.Error(writer, "Error creating access token", http.StatusInternalServerError)
+		http.Error(w, "Error creating access token", http.StatusInternalServerError)
 		return
 	}
 
 	newRefresh, err := createRefreshToken(refreshToken)
 	if err != nil {
-		http.Error(writer, "Error creating refresh token", http.StatusInternalServerError)
+		http.Error(w, "Error creating refresh token", http.StatusInternalServerError)
 		return
 	}
 
@@ -62,8 +66,8 @@ func Refresh(writer http.ResponseWriter, request *http.Request) {
 		RefreshToken string `json:"refresh_token"`
 	}
 
-	writer.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(writer).Encode(response{
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response{
 		AccessToken:  newAccess,
 		RefreshToken: newRefresh,
 	})

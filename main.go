@@ -14,10 +14,10 @@ import (
 func main() {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /login", login)
-	mux.Handle("GET /verify", accesstoken.Middleware(http.HandlerFunc(verify)))
+	mux.HandleFunc("/login", login)
+	mux.Handle("/verify", accesstoken.Middleware(http.HandlerFunc(verify)))
 
-	mux.HandleFunc("POST /refresh", refreshtoken.Refresh)
+	mux.HandleFunc("/refresh", refreshtoken.Refresh)
 
 	srv := http.Server{Addr: "localhost:8091", Handler: mux}
 
@@ -29,6 +29,10 @@ func main() {
 }
 
 func verify(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	}
+
 	user, ok := accesstoken.GetUserFromContext(r.Context())
 
 	if !ok {
@@ -53,6 +57,10 @@ func verify(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	}
+
 	authHeader := r.Header.Get("Authorization")
 
 	const basicAuthPrefix = "Basic "
