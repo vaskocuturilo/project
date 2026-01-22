@@ -2,6 +2,7 @@ package config
 
 import (
 	"project1/users"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -26,6 +27,10 @@ func hashPassword(password string) []byte {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
 	return hash
+}
+
+func AccessTokenDuration() time.Duration {
+	return time.Duration(time.Now().Add(15 * time.Minute).Unix())
 }
 
 var usersDB = []users.User{

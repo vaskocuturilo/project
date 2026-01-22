@@ -1,8 +1,9 @@
 package users
 
 type User struct {
-	Name           string
-	Lastname       string
-	Email          string
-	HashedPassword []byte
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Lastname       string `json:"lastname"`
+	Email          string `json:"email"`
+	HashedPassword []byte `json:"hashed-password"`
 }
