@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"project1/users"
 	"time"
 
@@ -31,6 +32,10 @@ func hashPassword(password string) []byte {
 
 func AccessTokenDuration() time.Duration {
 	return time.Duration(time.Now().Add(15 * time.Minute).Unix())
+}
+
+func GetMongoDbUri() string {
+	return os.Getenv("MONGODB_URI")
 }
 
 var usersDB = []users.User{
