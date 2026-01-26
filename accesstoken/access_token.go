@@ -17,10 +17,6 @@ import (
 
 type contextKey string
 
-var ErrInvalidToken = errors.New("invalid token")
-
-const issuer = "example.com"
-
 const userContextKey = contextKey("user")
 
 func checkPassword(hashedPassword []byte, password string) error {
@@ -70,6 +66,7 @@ func Middleware(next http.Handler) http.Handler {
 		authHeader := r.Header.Get("Authorization")
 
 		const bearerPrefix = "Bearer "
+
 		if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix) {
 			http.Error(w, "Missing access token", http.StatusUnauthorized)
 			return
@@ -89,32 +86,29 @@ func Middleware(next http.Handler) http.Handler {
 }
 
 func VerifyAccessToken(accessToken string) (users.User, error) {
-	parseToken, err := jwt.Parse(accessToken,
-		utils.KeyFunc(),
+	claims := &UserClaims{}
+
+	parseToken, err := jwt.ParseWithClaims(
+		accessToken,
+		claims,
+		func(t *jwt.Token) (interface{}, error) {
+			return utils.KeyFunc(), nil
+		},
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
-		jwt.WithIssuer(issuer),
-		jwt.WithExpirationRequired(),
 	)
+
 	if err != nil {
-		return users.User{}, fmt.Errorf("parse parseToken failed: %w", err)
+		return users.User{}, fmt.Errorf("token validation failed: %w", err)
 	}
 
 	if !parseToken.Valid {
-		return users.User{}, ErrInvalidToken
+		return users.User{}, errors.New("invalid token")
 	}
-
-	claims, ok := parseToken.Claims.(jwt.MapClaims)
-
-	if !ok {
-		return users.User{}, ErrInvalidToken
-	}
-
-	userLastname, _ := claims["user_lastname"].(string)
-	userName, _ := claims["user_name"].(string)
 
 	return users.User{
-		Name:  userName,
-		Email: userLastname,
+		Name:     claims.Subject,
+		Lastname: claims.Lastname,
+		Email:    claims.Email,
 	}, nil
 }
 
