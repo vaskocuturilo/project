@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"project1/claims"
 	"project1/internal/config"
 	"project1/token"
 	"project1/users"
@@ -83,7 +84,7 @@ func createRefreshToken(u users.User) (string, error) {
 
 	tokenID := uuid.New().String()
 	now := time.Now()
-	claims := jwt.MapClaims{
+	mapClaims := jwt.MapClaims{
 		"iss":  issuer,
 		"sub":  u.Name,
 		"iat":  now.Unix(),
@@ -92,7 +93,7 @@ func createRefreshToken(u users.User) (string, error) {
 		"type": "refresh",
 	}
 
-	withClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	withClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, mapClaims)
 
 	signed, err := withClaims.SignedString(secret)
 	if err != nil {
@@ -107,33 +108,36 @@ func createRefreshToken(u users.User) (string, error) {
 }
 
 func verifyRefreshToken(refreshToken string) (users.User, error) {
-	issuer := config.GetIssuer()
+	c := &claims.UserClaims{}
 
-	parse, err := jwt.Parse(refreshToken, utils.KeyFunc(),
+	parseToken, err := jwt.ParseWithClaims(
+		refreshToken,
+		c,
+		func(t *jwt.Token) (interface{}, error) {
+			return utils.KeyFunc(), nil
+		},
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
-		jwt.WithIssuer(issuer),
-		jwt.WithExpirationRequired(),
 	)
 
 	if err != nil {
 		return users.User{}, fmt.Errorf("parse parse failed: %w", err)
 	}
 
-	if !parse.Valid {
+	if !parseToken.Valid {
 		return users.User{}, ErrInvalidToken
 	}
 
-	claims, ok := parse.Claims.(jwt.MapClaims)
-	if !ok || claims["type"] != "refresh" {
+	mapClaims, ok := parseToken.Claims.(jwt.MapClaims)
+	if !ok || mapClaims["type"] != "refresh" {
 		return users.User{}, ErrInvalidToken
 	}
 
-	tokenID, ok := claims["jti"].(string)
+	tokenID, ok := mapClaims["jti"].(string)
 	if !ok {
 		return users.User{}, ErrInvalidToken
 	}
 
-	email, ok := claims["sub"].(string)
+	email, ok := mapClaims["sub"].(string)
 	if !ok {
 		return users.User{}, ErrInvalidToken
 	}
