@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"project1/claims"
 	"project1/internal/config"
 	"project1/users"
 	utils "project1/utils"
@@ -86,11 +87,11 @@ func Middleware(next http.Handler) http.Handler {
 }
 
 func VerifyAccessToken(accessToken string) (users.User, error) {
-	claims := &UserClaims{}
+	c := &claims.UserClaims{}
 
 	parseToken, err := jwt.ParseWithClaims(
 		accessToken,
-		claims,
+		c,
 		func(t *jwt.Token) (interface{}, error) {
 			return utils.KeyFunc(), nil
 		},
@@ -106,9 +107,9 @@ func VerifyAccessToken(accessToken string) (users.User, error) {
 	}
 
 	return users.User{
-		Name:     claims.Subject,
-		Lastname: claims.Lastname,
-		Email:    claims.Email,
+		Name:     c.Subject,
+		Lastname: c.Lastname,
+		Email:    c.Email,
 	}, nil
 }
 
