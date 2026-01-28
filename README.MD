@@ -10,7 +10,6 @@ The demo project.
 - Use the latest stable net/http library version.
 - Use the latest stable PostgreSQL database version.
 - Use the latest stable MongoDB database version.
-- Use the latest OpenAPI.
 
 ### 
 - Create a REST API service.
@@ -45,4 +44,7 @@ You will need the following technologies available to try it out:
 * Loki
 * Watchtower
 * IDE of your choice
+
+Best Practice: https://github.com/uber-go/guide/blob/master/style.md
+
 
