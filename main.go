@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"project1/accesstoken"
+	"project1/joke"
 	"project1/refreshtoken"
 	"project1/token"
 	"strings"
@@ -15,6 +16,9 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/login", login)
+
+	mux.HandleFunc("/jokes", joke.Jokes)
+
 	mux.Handle("/verify", accesstoken.Middleware(http.HandlerFunc(verify)))
 
 	mux.HandleFunc("/refresh", refreshtoken.Refresh)
