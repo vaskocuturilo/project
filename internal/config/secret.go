@@ -10,16 +10,10 @@ import (
 
 var jwtSecretKey = []byte("b5bfec4b39eb6e579f4c3ba0e4a82f880e0fe0428719c54ad14b386930374789")
 
-var urlOfficialJokeApi = "https://official-joke-api.appspot.com/random_joke"
-
 const issuer = "example.com"
 
 func JWTSecret() []byte {
 	return jwtSecretKey
-}
-
-func GetUrl() string {
-	return urlOfficialJokeApi
 }
 
 func UserDB() []users.User {
