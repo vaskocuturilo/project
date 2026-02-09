@@ -4,17 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"project1/claims"
 	"project1/internal/config"
 	"project1/users"
-	utils "project1/utils"
+	"project1/utils"
 	"slices"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var dummyHash []byte
+
+func init() {
+	h, _ := bcrypt.GenerateFromPassword([]byte("static-dummy-password"), bcrypt.DefaultCost)
+	dummyHash = h
+}
 
 type contextKey string
 
@@ -25,8 +33,6 @@ func checkPassword(hashedPassword []byte, password string) error {
 }
 
 func AuthUser(email, password string) (users.User, error) {
-	var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy-password"), bcrypt.DefaultCost)
-
 	var ErrInvalidUserOrPassword = errors.New("invalid user or password")
 
 	userDB := config.UserDB()
@@ -36,25 +42,22 @@ func AuthUser(email, password string) (users.User, error) {
 	})
 
 	var hashToCheck []byte
-	var userFound bool
-	var usr users.User
+	var user users.User
 
 	if idx == -1 {
 		hashToCheck = dummyHash
-		userFound = false
 	} else {
-		usr = userDB[idx]
-		hashToCheck = usr.HashedPassword
-		userFound = true
+		user = userDB[idx]
+		hashToCheck = user.HashedPassword
 	}
 
 	err := checkPassword(hashToCheck, password)
 
-	if !userFound || err != nil {
+	if idx == -1 || err != nil {
 		return users.User{}, ErrInvalidUserOrPassword
 	}
 
-	return usr, nil
+	return user, nil
 }
 
 func GetUserFromContext(ctx context.Context) (users.User, bool) {
@@ -64,20 +67,21 @@ func GetUserFromContext(ctx context.Context) (users.User, bool) {
 
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		authHeader := r.Header.Get("Authorization")
 
-		const bearerPrefix = "Bearer "
+		parts := strings.Fields(authHeader)
 
-		if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix) {
-			http.Error(w, "Missing access token", http.StatusUnauthorized)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		rawToken := strings.TrimPrefix(authHeader, bearerPrefix)
+		u, err := VerifyAccessToken(parts[1])
 
-		u, err := VerifyAccessToken(rawToken)
 		if err != nil {
-			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			log.Printf("Token error: %v", err)
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
 			return
 		}
 
