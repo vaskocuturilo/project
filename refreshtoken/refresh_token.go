@@ -19,11 +19,14 @@ import (
 	"github.com/google/uuid"
 )
 
-type request struct {
+type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-var req request
+type refreshResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
 
 var ErrInvalidToken = errors.New("invalid token")
 
@@ -35,67 +38,59 @@ var (
 
 func Refresh(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid r method", http.StatusMethodNotAllowed)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&r); err != nil || req.RefreshToken == "" {
+	var req refreshRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RefreshToken == "" {
 		http.Error(w, "Invalid r body", http.StatusBadRequest)
 		return
 	}
 
-	refreshToken, err := verifyRefreshToken(req.RefreshToken)
+	u, err := verifyRefreshToken(req.RefreshToken)
 
 	if err != nil {
 		http.Error(w, "Bad refresh token", http.StatusBadRequest)
 		return
 	}
 
-	newAccess, err := token.CreateAccessToken(refreshToken)
+	newAccess, err := token.CreateAccessToken(u)
 	if err != nil {
 		http.Error(w, "Error creating access token", http.StatusInternalServerError)
 		return
 	}
 
-	newRefresh, err := createRefreshToken(refreshToken)
+	newRefresh, err := createRefreshToken(u)
 	if err != nil {
 		http.Error(w, "Error creating refresh token", http.StatusInternalServerError)
 		return
 	}
 
-	type response struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(response{
+	err = json.NewEncoder(w).Encode(refreshResponse{
 		AccessToken:  newAccess,
 		RefreshToken: newRefresh,
 	})
-	if err != nil {
-		return
-	}
 }
 
 func createRefreshToken(u users.User) (string, error) {
-	issuer := config.GetIssuer()
-
-	secret := config.JWTSecret()
-
 	tokenID := uuid.New().String()
-	now := time.Now()
-	mapClaims := jwt.MapClaims{
-		"iss":  issuer,
-		"sub":  u.Name,
-		"iat":  now.Unix(),
-		"exp":  now.Add(7 * 24 * time.Hour).Unix(),
-		"jti":  tokenID,
-		"type": "refresh",
+
+	userClaims := claims.UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    config.GetIssuer(),
+			Subject:   u.Email, // Use Email as the unique identifier
+			ID:        tokenID, // This is the jti
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+		TokenType: "refresh",
 	}
 
-	withClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, mapClaims)
+	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS256, userClaims).
+		SignedString(config.JWTSecret())
 
-	signed, err := withClaims.SignedString(secret)
 	if err != nil {
 		return "", err
 	}
