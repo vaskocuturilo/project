@@ -7,4 +7,5 @@ type UserClaims struct {
 	Lastname string `json:"user_lastname"`
 	Email    string `json:"user_email"`
 	jwt.RegisteredClaims
+	TokenType string
 }
